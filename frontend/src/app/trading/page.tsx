@@ -169,16 +169,45 @@ export default function TradingPage() {
             <p className="sub">{data.ai.summary ?? "—"}</p>
             {data.ai.strategy && <p>{data.ai.strategy}</p>}
             {data.ai.error && <p className="error">{data.ai.error}</p>}
-            <div className="grid" style={{ display: "grid", gap: "0.75rem" }}>
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
+                gap: "0.85rem",
+                marginTop: "0.75rem",
+              }}
+            >
               {[
                 ["太陽光", data.ai.solar_actions],
                 ["風力", data.ai.wind_actions],
                 ["需給", data.ai.balance_actions],
                 ["価格取引", data.ai.price_actions],
               ].map(([title, items]) => (
-                <div key={title as string}>
-                  <strong>{title as string}</strong>
-                  <ul className="muted">
+                <div
+                  key={title as string}
+                  style={{
+                    writingMode: "horizontal-tb",
+                    textOrientation: "mixed",
+                    minWidth: 0,
+                    padding: "0.75rem 0.9rem",
+                    borderRadius: 12,
+                    border: "1px solid rgba(232,245,239,0.12)",
+                    background: "rgba(0,0,0,0.18)",
+                  }}
+                >
+                  <strong style={{ display: "block", marginBottom: "0.4rem" }}>
+                    {title as string}
+                  </strong>
+                  <ul
+                    className="muted"
+                    style={{
+                      margin: 0,
+                      paddingLeft: "1.2rem",
+                      lineHeight: 1.65,
+                      wordBreak: "normal",
+                      overflowWrap: "anywhere",
+                    }}
+                  >
                     {((items as string[]) ?? []).map((x) => (
                       <li key={x}>{x}</li>
                     ))}
