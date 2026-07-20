@@ -168,6 +168,10 @@ export const api = {
     getJson<OptimizeResponse>(
       `/api/optimize/battery?asset_code=${asset}&horizon_hours=${h}`
     ),
+  marketOptimize: (region = "tokyo", h = 24, useAi = true) =>
+    getJson<Record<string, unknown>>(
+      `/api/optimize/market?region=${region}&horizon_hours=${h}&use_ai=${useAi}`
+    ),
   vpp: (region = "tokyo", h = 24) =>
     getJson<VppResponse>(`/api/vpp?region=${region}&horizon_hours=${h}`),
   dr: (region = "tokyo", h = 24) =>

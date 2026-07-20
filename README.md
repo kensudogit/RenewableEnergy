@@ -16,6 +16,22 @@
 | VPP | `GET /api/vpp` | 複数アセット集約 + 柔軟性 |
 | DR | `GET /api/dr` | ピークカットイベント計画 |
 | 気象 | `GET /api/weather` | GHI / 風速 / 気温ドライバ |
+| **市場一体最適化** | `GET /api/optimize/market` | 太陽光・風力変動 / 需給 / 価格を LP+AI+市場取引で最適化 |
+
+### 市場一体最適化（IT・AI・市場取引）
+
+`GET /api/optimize/market` は次を一体で扱います。
+
+1. 太陽光発電の出力変動  
+2. 風力発電の発電量変動  
+3. 電力需給バランス  
+4. 電力価格の変動  
+
+- **IT**: 予測 + HiGHS 線形計画（充放電・売買・コミットメント追従）  
+- **AI**: Railway Variables の `OPENAI_API_KEY` で取引戦略を生成  
+- **市場取引**: 時間別 buy/sell スケジュール（JEPX スポット想定）  
+
+UI: `/trading`
 
 ## 技術スタック
 

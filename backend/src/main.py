@@ -10,6 +10,7 @@ from src.api.analysis import router as analysis_router
 from src.api.dashboard import router as dashboard_router
 from src.api.forecast import router as forecast_router
 from src.api.grid import router as grid_router
+from src.ai.client import resolve_openai_api_key
 from src.config import get_settings
 from src.db import init_database
 
@@ -26,7 +27,7 @@ app = FastAPI(
         "発電量・需要・市場価格・燃料価格の予測、リスク分析、収益シミュレーション、"
         "蓄電池最適化、VPP、デマンドレスポンス"
     ),
-    version="0.2.0",
+    version="0.3.0",
     lifespan=lifespan,
 )
 
@@ -97,8 +98,9 @@ def health():
             "vpp",
             "demand_response",
             "weather",
+            "energy_market_optimize",
         ],
-        "openai_configured": bool(settings.openai_api_key),
+        "openai_configured": bool(resolve_openai_api_key()),
     }
 
 

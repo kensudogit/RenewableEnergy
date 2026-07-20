@@ -12,6 +12,7 @@ const links = [
   { href: "/risk", label: "リスク" },
   { href: "/simulate", label: "収益シミュ" },
   { href: "/optimize", label: "蓄電池最適化" },
+  { href: "/trading", label: "市場最適化" },
   { href: "/vpp", label: "VPP" },
   { href: "/dr", label: "DR" },
 ];

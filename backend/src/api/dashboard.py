@@ -4,6 +4,7 @@ from src.services.demand import forecast_demand
 from src.services.dr import plan_demand_response
 from src.services.fuel_price import forecast_fuel_price
 from src.services.generation import forecast_generation
+from src.services.market_engine import optimize_energy_market
 from src.services.market_price import forecast_market_price
 from src.services.optimize import optimize_battery_dispatch
 from src.services.revenue import simulate_revenue
@@ -29,6 +30,10 @@ def dashboard(
     opt = optimize_battery_dispatch(asset_code=asset_code, market=market, horizon_hours=24)
     vpp = aggregate_vpp(region=region, horizon_hours=24)
     dr = plan_demand_response(region=region, horizon_hours=24)
+    # Dashboard uses numeric pillars only; AI runs on /api/optimize/market
+    market_opt = optimize_energy_market(
+        region=region, market=market, horizon_hours=24, use_ai=False
+    )
 
     return {
         "region": region,
@@ -73,5 +78,10 @@ def dashboard(
             "battery_optimize": opt["summary"],
             "vpp": vpp["summary"],
             "demand_response": dr["summary"],
+            "energy_market_optimize": {
+                "pillars": market_opt["pillars"],
+                "summary": market_opt["summary"],
+                "solver": market_opt["solver"],
+            },
         },
     }

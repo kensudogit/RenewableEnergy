@@ -32,3 +32,16 @@ def test_optimize_vpp_dr():
     assert vpp["summary"]["peak_flexible_mw"] >= 0
     dr = plan_demand_response(horizon_hours=12)
     assert "event_count" in dr["summary"]
+
+
+def test_energy_market_optimize():
+    from src.services.market_engine import optimize_energy_market
+
+    out = optimize_energy_market(horizon_hours=12, use_ai=False)
+    assert out["module"] == "energy_market_optimize"
+    assert "solar_volatility" in out["pillars"]
+    assert "wind_volatility" in out["pillars"]
+    assert "supply_demand_balance_rmse_mw" in out["pillars"]
+    assert "price_volatility" in out["pillars"]
+    assert len(out["trades"]) == 12
+    assert len(out["series"]) == 12
