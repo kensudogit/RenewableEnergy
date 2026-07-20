@@ -12,6 +12,7 @@ _config = TradingConfig(mode=get_settings().trading_default_mode)  # type: ignor
 _orders: list[OrderRecord] = []
 _runs: list[RunLog] = []
 _positions: dict[str, Position] = {}
+_audit: list[dict] = []
 _last_order_ts: float | None = None
 
 
@@ -134,3 +135,46 @@ def set_last_order_ts(ts: float) -> None:
     global _last_order_ts
     with _lock:
         _last_order_ts = ts
+
+
+def add_audit(event: str, payload: dict[str, Any] | None = None) -> None:
+    from src.trading.models import utcnow
+
+    with _lock:
+        _audit.insert(
+            0,
+            {
+                "ts": utcnow().isoformat(),
+                "event": event,
+                "payload": payload or {},
+            },
+        )
+        if len(_audit) > 500:
+            del _audit[500:]
+
+
+def list_audit(limit: int = 50) -> list[dict[str, Any]]:
+    with _lock:
+        return list(_audit[:limit])
+
+
+def performance_stats() -> dict[str, Any]:
+    with _lock:
+        filled = [o for o in _orders if o.status == "filled"]
+        rejected = [o for o in _orders if o.status == "rejected"]
+        buys = sum(1 for o in filled if o.side == "buy")
+        sells = sum(1 for o in filled if o.side == "sell")
+        notional = sum(float(o.notional_jpy or 0) for o in filled)
+        realized = sum(p.realized_pnl_jpy for p in _positions.values())
+        fill_rate = (len(filled) / max(len(_orders), 1)) * 100.0
+        return {
+            "total_orders": len(_orders),
+            "filled": len(filled),
+            "rejected": len(rejected),
+            "buy_fills": buys,
+            "sell_fills": sells,
+            "fill_rate_pct": round(fill_rate, 1),
+            "total_notional_jpy": round(notional, 2),
+            "realized_pnl_jpy": round(realized, 2),
+            "open_positions": len([p for p in _positions.values() if abs(p.net_mw) > 1e-9]),
+        }

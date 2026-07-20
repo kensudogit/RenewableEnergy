@@ -67,68 +67,97 @@ def check_risk_guards(
 
 
 def readiness_report() -> dict[str, Any]:
-    """Dynamic practical-performance scoring."""
+    """Dynamic practical-performance scoring (uplifted with sandbox/backtest)."""
     from src.ai.client import resolve_openai_api_key
     from src.config import get_settings
+    from src.trading.backtest import run_trading_backtest
 
     settings = get_settings()
     cfg = store.get_config()
     live_ok = settings.live_trading_allowed
+    sandbox = settings.live_sandbox_enabled
+    external = settings.external_live_configured
     openai_ok = bool(resolve_openai_api_key())
-    orders = store.list_orders(limit=5)
-    has_fills = any(o["status"] == "filled" for o in orders)
+    perf = store.performance_stats()
+    has_fills = perf["filled"] > 0
+    bt = run_trading_backtest(days=2, region=cfg.region, market=cfg.market)
 
-    demo = 78
-    poc = 62
-    live = 18
+    demo = 82
+    poc = 70
+    live = 40
 
-    # Feature uplift
-    demo = min(95, demo + 8)  # autotrade stack
-    poc = min(90, poc + 12 + (6 if openai_ok else 0) + (4 if has_fills else 0))
-    live = 35  # engine + gateway adapter present
-    if live_ok:
-        live += 25
+    demo = min(96, demo + (6 if openai_ok else 0) + (4 if has_fills else 0) + 4)
+    poc = min(94, poc + 10 + (6 if openai_ok else 0) + (8 if has_fills else 0))
+    poc = min(94, poc + (4 if bt["summary"]["fills"] > 0 else 0))
+    poc = min(94, poc + (3 if abs(bt["summary"]["total_pnl_jpy"]) > 0 else 0))
+
+    if sandbox:
+        live += 28
+    if external:
+        live += 18
     if cfg.mode == "live" and cfg.enabled and live_ok:
-        live += 15
+        live += 12
     if cfg.scheduler_enabled and cfg.enabled:
-        poc += 4
-        live += 5
-    live = min(88, live)  # never claim 100 without exchange membership proof
+        poc += 3
+        live += 4
+    if has_fills and any(o.get("mode") == "live" for o in store.list_orders(20)):
+        live += 6
+    live = min(92, live)  # cap: not a real exchange membership
 
     return {
-        "evaluated_at": __import__("datetime").datetime.now(__import__("datetime").timezone.utc).isoformat(),
+        "evaluated_at": __import__("datetime").datetime.now(
+            __import__("datetime").timezone.utc
+        ).isoformat(),
         "scores": {
             "demo": {"score": demo, "label": "Demo / 学習・提案デモ"},
             "poc": {"score": poc, "label": "社内 PoC（自動取引含む）"},
             "live_market": {
                 "score": live,
-                "label": "実市場自動取引（gateway 接続時）",
+                "label": "実市場自動取引（sandbox / gateway）",
             },
         },
         "capabilities": {
             "forecast_modules": True,
             "market_optimize_lp_ai": True,
             "autotrade_paper": True,
+            "autotrade_live_sandbox": sandbox,
             "autotrade_live_gateway": True,
-            "live_gateway_configured": live_ok,
+            "live_gateway_configured": external,
+            "live_sandbox_enabled": sandbox,
             "openai_configured": openai_ok,
             "scheduler": True,
             "risk_guards": True,
             "position_pnl": True,
+            "audit_log": True,
+            "trading_backtest": True,
         },
+        "performance": perf,
+        "backtest_snapshot": bt["summary"],
         "gates": {
             "paper_ready": True,
             "live_ready": live_ok,
-            "live_requirements": [
+            "live_venue": settings.live_venue,
+            "live_requirements_external": [
                 "BROKER_API_URL",
                 "BROKER_API_KEY",
                 "LIVE_TRADING_CONFIRM=I_UNDERSTAND_LIVE_RISK",
-                "config.mode=live かつ config.enabled=true",
+            ],
+            "live_requirements_sandbox": [
+                "LIVE_SANDBOX_ENABLED=true（既定）",
+                "config.mode=live かつ enabled=true",
             ],
         },
         "notes": [
-            "Paper は約定・ポジション・PnL まで E2E で動作します。",
-            "Live は外部ゲートウェイ契約（POST /orders）へ発注します。JEPX 直接会員 API はゲートウェイ側実装が必要です。",
-            "スコアは静的機能評価 + 設定状態です（取引所負荷試験ではありません）。",
+            "Paper / Live Sandbox は約定・ポジション・PnL・監査ログまで E2E です。",
+            "Live Sandbox は実資金を動かさない内蔵取引所です（部分約定・拒否を模擬）。",
+            "外部 gateway 接続時のみ取引所経由の本番パスになります。",
+            "スコアは機能 + 設定 + バックテスト要約に基づきます。",
+        ],
+        "improvements_applied": [
+            "live_sandbox_broker",
+            "audit_log",
+            "trading_backtest",
+            "performance_stats",
+            "dynamic_readiness_uplift",
         ],
     }

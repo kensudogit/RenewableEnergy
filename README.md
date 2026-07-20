@@ -43,14 +43,19 @@ UI: `/trading`
 | `POST /api/autotrade/scheduler/start\|stop` | 定期執行 |
 | `GET /api/autotrade/readiness` | 実用性能スコア（動的） |
 
-**Live に必要な Railway Variables**
+**Live Sandbox（既定・実資金なし）**
 
-- `BROKER_API_URL` — 発注ゲートウェイ POST 先
-- `BROKER_API_KEY` — Bearer トークン
+- `LIVE_SANDBOX_ENABLED=true`
+- `/autotrade` で **Live Sandbox 有効化 → 今すぐ執行**
+- 部分約定・拒否・監査ログ・バックテスト（`POST /api/autotrade/backtest`）対応
+
+**外部ゲートウェイ（本番パス）**
+
+- `BROKER_API_URL` / `BROKER_API_KEY`
 - `LIVE_TRADING_CONFIRM=I_UNDERSTAND_LIVE_RISK`
 - （任意）`BROKER_ACCOUNT_ID`
 
-UI: `/autotrade`
+UI: `/autotrade` · 動的スコア: `GET /api/autotrade/readiness`
 
 ## 技術スタック
 

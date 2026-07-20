@@ -14,6 +14,7 @@ from src.api.grid import router as grid_router
 from src.ai.client import resolve_openai_api_key
 from src.config import get_settings
 from src.db import init_database
+from src.trading.sandbox import router as sandbox_router
 from src.trading.scheduler import ensure_scheduler_from_config
 
 
@@ -30,7 +31,7 @@ app = FastAPI(
         "発電量・需要・市場価格・燃料価格の予測、リスク分析、収益シミュレーション、"
         "蓄電池最適化、VPP、デマンドレスポンス、実市場自動取引（paper/live）"
     ),
-    version="0.4.0",
+    version="0.5.0",
     lifespan=lifespan,
 )
 
@@ -48,6 +49,7 @@ app.include_router(analysis_router)
 app.include_router(dashboard_router)
 app.include_router(grid_router)
 app.include_router(autotrade_router)
+app.include_router(sandbox_router)
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -110,6 +112,8 @@ def health():
         ],
         "openai_configured": bool(resolve_openai_api_key()),
         "live_trading_allowed": get_settings().live_trading_allowed,
+        "live_venue": get_settings().live_venue,
+        "live_sandbox_enabled": get_settings().live_sandbox_enabled,
     }
 
 

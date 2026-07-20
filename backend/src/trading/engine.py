@@ -137,6 +137,18 @@ def execute_cycle(trigger: str = "manual") -> dict[str, Any]:
     filled = sum(1 for o in placed if o["status"] == "filled")
     rejected = sum(1 for o in placed if o["status"] == "rejected")
     decision = "executed" if placed and rejected < len(placed) else ("failed" if placed else "blocked")
+    store.add_audit(
+        "execute_cycle",
+        {
+            "trigger": trigger,
+            "mode": cfg.mode,
+            "broker": broker.name,
+            "submitted": len(placed),
+            "filled": filled,
+            "rejected": rejected,
+            "decision": decision,
+        },
+    )
 
     run = RunLog(
         trigger=trigger,

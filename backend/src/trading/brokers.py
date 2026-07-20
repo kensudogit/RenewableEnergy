@@ -186,5 +186,17 @@ class LiveGatewayBroker:
 
 def get_broker(mode: str) -> Broker:
     if mode == "live":
+        settings = get_settings()
+        # Prefer in-process sandbox when enabled and no external URL
+        if settings.live_sandbox_enabled and not settings.broker_api_url.strip():
+            from src.trading.sandbox import SandboxBroker
+
+            return SandboxBroker()
+        if settings.external_live_configured or settings.broker_api_url.strip():
+            return LiveGatewayBroker()
+        if settings.live_sandbox_enabled:
+            from src.trading.sandbox import SandboxBroker
+
+            return SandboxBroker()
         return LiveGatewayBroker()
     return PaperBroker()

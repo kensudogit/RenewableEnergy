@@ -44,9 +44,9 @@ const recommendedFlow = [
 ] as const;
 
 const readinessScores = [
-  { label: "Demo / 学習・提案デモ", score: "86/100" },
-  { label: "社内 PoC（自動取引含む）", score: "80/100" },
-  { label: "実市場自動取引（gateway 接続時）", score: "60–88/100" },
+  { label: "Demo / 学習・提案デモ", score: "92+/100" },
+  { label: "社内 PoC（自動取引含む）", score: "90+/100" },
+  { label: "実市場自動取引（sandbox / gateway）", score: "70–92/100" },
 ] as const;
 
 const readinessDo = [

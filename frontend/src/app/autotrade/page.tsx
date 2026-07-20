@@ -38,6 +38,14 @@ type Status = {
   }>;
   daily: { trades: number; notional_jpy: number };
   live_trading_allowed: boolean;
+  live_venue?: string;
+  live_sandbox_enabled?: boolean;
+  performance?: {
+    filled: number;
+    rejected: number;
+    fill_rate_pct: number;
+    realized_pnl_jpy: number;
+  };
 };
 
 type Readiness = {
@@ -113,8 +121,8 @@ export default function AutotradePage() {
       <section className="hero">
         <h1>自動取引（Paper / Live）</h1>
         <p>
-          市場一体最適化の結果をリスクゲート通過後に発注します。既定は Paper
-          約定。Live は Railway のゲートウェイ変数設定後に有効化できます。
+          市場一体最適化の結果をリスクゲート通過後に発注します。Paper に加え、内蔵 Live
+          Sandbox（実資金なし）で本番相当の約定・部分約定・監査ログを検証できます。
         </p>
       </section>
 
@@ -152,7 +160,8 @@ export default function AutotradePage() {
             <h2>設定</h2>
             <p className="sub">
               mode={status.config.mode} / enabled={String(status.config.enabled)} /
-              live_allowed={String(status.live_trading_allowed)}
+              venue={status.live_venue ?? "-"} / sandbox=
+              {String(status.live_sandbox_enabled)}
             </p>
             <div className="controls">
               <button
@@ -169,13 +178,20 @@ export default function AutotradePage() {
                 disabled={busy || !status.live_trading_allowed}
                 onClick={() => patchConfig({ mode: "live", enabled: true })}
               >
-                Live 有効化
+                Live Sandbox 有効化
               </button>
               <button type="button" disabled={busy} onClick={() => post("/api/autotrade/evaluate")}>
                 評価 (dry-run)
               </button>
               <button type="button" disabled={busy} onClick={() => post("/api/autotrade/run")}>
                 今すぐ執行
+              </button>
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => post("/api/autotrade/backtest")}
+              >
+                バックテスト
               </button>
               <button
                 type="button"
@@ -192,6 +208,24 @@ export default function AutotradePage() {
                 スケジューラ停止
               </button>
             </div>
+            {status.performance && (
+              <div className="metrics">
+                <div className="metric">
+                  <span className="label">Fill率</span>
+                  <span className="value">{status.performance.fill_rate_pct}%</span>
+                </div>
+                <div className="metric">
+                  <span className="label">約定</span>
+                  <span className="value">{status.performance.filled}</span>
+                </div>
+                <div className="metric">
+                  <span className="label">実現PnL</span>
+                  <span className="value">
+                    {Math.round(status.performance.realized_pnl_jpy).toLocaleString()}
+                  </span>
+                </div>
+              </div>
+            )}
             <div className="metrics">
               <div className="metric">
                 <span className="label">Scheduler</span>

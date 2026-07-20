@@ -7,6 +7,7 @@ from pydantic import BaseModel, Field
 
 from src.config import get_settings
 from src.trading import store
+from src.trading.backtest import run_trading_backtest
 from src.trading.engine import evaluate_cycle, execute_cycle
 from src.trading.risk import readiness_report
 from src.trading.scheduler import scheduler_status, start_scheduler, stop_scheduler
@@ -37,7 +38,10 @@ def get_config():
     return {
         "config": cfg,
         "live_trading_allowed": settings.live_trading_allowed,
+        "live_venue": settings.live_venue,
+        "live_sandbox_enabled": settings.live_sandbox_enabled,
         "broker_configured": bool(settings.broker_api_url and settings.broker_api_key),
+        "external_live_configured": settings.external_live_configured,
     }
 
 
@@ -49,12 +53,17 @@ def put_config(patch: ConfigPatch):
         raise HTTPException(
             status_code=400,
             detail=(
-                "Live mode unavailable. Set BROKER_API_URL, BROKER_API_KEY, and "
-                "LIVE_TRADING_CONFIRM=I_UNDERSTAND_LIVE_RISK in Railway Variables."
+                "Live mode unavailable. Enable LIVE_SANDBOX_ENABLED=true, or set "
+                "BROKER_API_URL + BROKER_API_KEY + LIVE_TRADING_CONFIRM=I_UNDERSTAND_LIVE_RISK."
             ),
         )
     cfg = store.update_config(data)
-    return {"config": cfg.to_dict(), "live_trading_allowed": settings.live_trading_allowed}
+    store.add_audit("config_update", data)
+    return {
+        "config": cfg.to_dict(),
+        "live_trading_allowed": settings.live_trading_allowed,
+        "live_venue": settings.live_venue,
+    }
 
 
 @router.get("/status")
@@ -68,8 +77,12 @@ def status():
         "positions": store.list_positions(),
         "recent_orders": store.list_orders(20),
         "recent_runs": store.list_runs(15),
+        "recent_audit": store.list_audit(20),
+        "performance": store.performance_stats(),
         "daily": store.daily_stats(),
         "live_trading_allowed": settings.live_trading_allowed,
+        "live_venue": settings.live_venue,
+        "live_sandbox_enabled": settings.live_sandbox_enabled,
     }
 
 
@@ -114,3 +127,16 @@ def runs(limit: int = 30):
 @router.get("/readiness")
 def readiness():
     return readiness_report()
+
+
+@router.get("/performance")
+def performance():
+    return {"performance": store.performance_stats(), "audit": store.list_audit(30)}
+
+
+@router.post("/backtest")
+def backtest(days: int = 3):
+    cfg = store.get_config()
+    result = run_trading_backtest(region=cfg.region, market=cfg.market, days=days)
+    store.add_audit("backtest", result["summary"])
+    return result
