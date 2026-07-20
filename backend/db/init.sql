@@ -96,3 +96,69 @@ CREATE INDEX IF NOT EXISTS idx_generation_ts_asset_ts ON generation_ts(asset_id,
 CREATE INDEX IF NOT EXISTS idx_demand_ts_region_ts ON demand_ts(region_id, ts DESC);
 CREATE INDEX IF NOT EXISTS idx_market_price_ts ON market_price_ts(market_code, ts DESC);
 CREATE INDEX IF NOT EXISTS idx_fuel_price_ts ON fuel_price_ts(commodity, ts DESC);
+
+-- Auto trading (paper / live)
+CREATE TABLE IF NOT EXISTS trading_config (
+    id INTEGER PRIMARY KEY DEFAULT 1,
+    enabled BOOLEAN NOT NULL DEFAULT FALSE,
+    mode VARCHAR(16) NOT NULL DEFAULT 'paper', -- paper | live
+    market VARCHAR(32) NOT NULL DEFAULT 'jepx_spot',
+    region VARCHAR(32) NOT NULL DEFAULT 'tokyo',
+    max_order_mw NUMERIC(14, 4) NOT NULL DEFAULT 10,
+    max_position_mw NUMERIC(14, 4) NOT NULL DEFAULT 50,
+    max_daily_trades INTEGER NOT NULL DEFAULT 48,
+    max_daily_notional_jpy NUMERIC(18, 2) NOT NULL DEFAULT 50000000,
+    min_trade_mw NUMERIC(14, 4) NOT NULL DEFAULT 0.1,
+    cooldown_seconds INTEGER NOT NULL DEFAULT 60,
+    scheduler_enabled BOOLEAN NOT NULL DEFAULT FALSE,
+    scheduler_interval_sec INTEGER NOT NULL DEFAULT 300,
+    use_ai BOOLEAN NOT NULL DEFAULT TRUE,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT trading_config_singleton CHECK (id = 1)
+);
+
+INSERT INTO trading_config (id) VALUES (1) ON CONFLICT (id) DO NOTHING;
+
+CREATE TABLE IF NOT EXISTS trading_orders (
+    id BIGSERIAL PRIMARY KEY,
+    client_order_id VARCHAR(64) UNIQUE NOT NULL,
+    broker_order_id VARCHAR(128),
+    mode VARCHAR(16) NOT NULL,
+    market VARCHAR(32) NOT NULL,
+    side VARCHAR(8) NOT NULL, -- buy | sell
+    volume_mw NUMERIC(14, 4) NOT NULL,
+    limit_price_yen NUMERIC(12, 4) NOT NULL,
+    status VARCHAR(32) NOT NULL, -- submitted | filled | rejected | cancelled
+    fill_price_yen NUMERIC(12, 4),
+    fill_volume_mw NUMERIC(14, 4),
+    notional_jpy NUMERIC(18, 2),
+    rationale TEXT,
+    delivery_ts TIMESTAMPTZ,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    filled_at TIMESTAMPTZ,
+    raw JSONB
+);
+
+CREATE TABLE IF NOT EXISTS trading_positions (
+    id BIGSERIAL PRIMARY KEY,
+    market VARCHAR(32) NOT NULL,
+    net_mw NUMERIC(14, 4) NOT NULL DEFAULT 0,
+    avg_price_yen NUMERIC(12, 4) NOT NULL DEFAULT 0,
+    realized_pnl_jpy NUMERIC(18, 2) NOT NULL DEFAULT 0,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    UNIQUE (market)
+);
+
+CREATE TABLE IF NOT EXISTS trading_runs (
+    id BIGSERIAL PRIMARY KEY,
+    trigger VARCHAR(32) NOT NULL, -- manual | scheduler | evaluate
+    mode VARCHAR(16) NOT NULL,
+    decision VARCHAR(32) NOT NULL, -- executed | blocked | ready | failed | disabled
+    orders_submitted INTEGER NOT NULL DEFAULT 0,
+    message TEXT,
+    snapshot JSONB,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_trading_orders_created ON trading_orders(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_trading_runs_created ON trading_runs(created_at DESC);

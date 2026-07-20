@@ -7,17 +7,20 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
 
 from src.api.analysis import router as analysis_router
+from src.api.autotrade import router as autotrade_router
 from src.api.dashboard import router as dashboard_router
 from src.api.forecast import router as forecast_router
 from src.api.grid import router as grid_router
 from src.ai.client import resolve_openai_api_key
 from src.config import get_settings
 from src.db import init_database
+from src.trading.scheduler import ensure_scheduler_from_config
 
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     init_database()
+    await ensure_scheduler_from_config()
     yield
 
 
@@ -25,9 +28,9 @@ app = FastAPI(
     title="Renewable Energy Platform",
     description=(
         "発電量・需要・市場価格・燃料価格の予測、リスク分析、収益シミュレーション、"
-        "蓄電池最適化、VPP、デマンドレスポンス"
+        "蓄電池最適化、VPP、デマンドレスポンス、実市場自動取引（paper/live）"
     ),
-    version="0.3.0",
+    version="0.4.0",
     lifespan=lifespan,
 )
 
@@ -44,6 +47,7 @@ app.include_router(forecast_router)
 app.include_router(analysis_router)
 app.include_router(dashboard_router)
 app.include_router(grid_router)
+app.include_router(autotrade_router)
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -75,7 +79,9 @@ def root():
       <li><a href="http://localhost:3000">フロントエンド UI</a> — http://localhost:3000</li>
       <li><a href="/docs">Swagger API Docs</a></li>
       <li><a href="/health">Health check</a></li>
-      <li><a href="/api/dashboard">Dashboard JSON</a></li>
+                <li><a href="/api/dashboard">Dashboard JSON</a></li>
+      <li><a href="/api/autotrade/status">Autotrade status</a></li>
+      <li><a href="/api/autotrade/readiness">Readiness scores</a></li>
     </ul>
   </main>
 </body>
@@ -99,8 +105,11 @@ def health():
             "demand_response",
             "weather",
             "energy_market_optimize",
+            "autotrade_paper",
+            "autotrade_live_gateway",
         ],
         "openai_configured": bool(resolve_openai_api_key()),
+        "live_trading_allowed": get_settings().live_trading_allowed,
     }
 
 

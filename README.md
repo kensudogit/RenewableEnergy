@@ -33,6 +33,25 @@
 
 UI: `/trading`
 
+### 自動取引（Paper / Live）
+
+| API | 説明 |
+|---|---|
+| `PUT /api/autotrade/config` | `enabled` / `mode=paper\|live` など |
+| `POST /api/autotrade/evaluate` | 発注せずリスク判定 |
+| `POST /api/autotrade/run` | 最適化→ガード→発注 |
+| `POST /api/autotrade/scheduler/start\|stop` | 定期執行 |
+| `GET /api/autotrade/readiness` | 実用性能スコア（動的） |
+
+**Live に必要な Railway Variables**
+
+- `BROKER_API_URL` — 発注ゲートウェイ POST 先
+- `BROKER_API_KEY` — Bearer トークン
+- `LIVE_TRADING_CONFIRM=I_UNDERSTAND_LIVE_RISK`
+- （任意）`BROKER_ACCOUNT_ID`
+
+UI: `/autotrade`
+
 ## 技術スタック
 
 - **Backend**: Python 3.12 / FastAPI / scikit-learn / SQLAlchemy
